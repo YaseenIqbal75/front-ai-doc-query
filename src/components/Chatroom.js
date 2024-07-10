@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import botImage from "../assets/images/bit_image.jpeg" 
 import { useNavigate } from "react-router-dom";
 import {
@@ -20,7 +20,10 @@ function Chatroom() {
     const [chatMessages,setChatMessages] = useState([])
     const [chatId,setChatId] = useState("")
     const [userToken, setUserToken] = useState("");
-    const [userId, setUserId] = useState("");
+    const [userId, setUserId] = useState("")
+    const [isUploading,setIsUploading] = useState(false)
+    const [isUploaded,setIsUploaded] = useState(false)
+    const fileInputRef = useRef(null)
     const navigate = useNavigate()
 
 
@@ -73,6 +76,13 @@ function Chatroom() {
       .then((data)=>{
         console.log(data)
         setSelectedFiles(data)
+        if (data.length){
+          console.log("length is :", data.length )
+          setIsUploaded(true)
+        }
+        else{
+          setIsUploaded(false)
+        }
       })
       .catch((error) =>console.error("There was a problem with the fetch operation:", error))
     }
@@ -135,9 +145,16 @@ function Chatroom() {
 
 
     const uploadFiles = (event)=>{
-      console.log("Uploading Files..")
-      const formData =  new FormData()
-      for(let i=0;i<selectedFiles.length;i++){
+      event.preventDefault()
+      if (chatId === ""){
+        alert("Create a chat first!")
+      }
+      else{
+
+        setIsUploading(true)
+        console.log("Uploading Files..")
+        const formData =  new FormData()
+        for(let i=0;i<selectedFiles.length;i++){
         formData.append('files[]',selectedFiles[i])
       }
       formData.append("chat_id", chatId)
@@ -157,10 +174,17 @@ function Chatroom() {
       })
       .then(data => {
         console.log('Success:', data);
+        setIsUploading(false)
+        alert("File Uploaded Successsfully")
+        setIsUploaded(true)
+        // fileInputRef.current.value = ""
       })
       .catch(error => {
         console.error('There was a problem with the fetch operation:', error.message);
+        alert(error.message)
+        setIsUploading(false)
       });
+    }
     }
 
     const handleFileChange = (event) => {
@@ -255,7 +279,7 @@ function Chatroom() {
       .then((data)=>{
         console.log(data)
         setChatMessages(data)
-        // fetchChatFiles(chatid)
+        fetchChatFiles(chatid)
       })
       .catch((error)=> console.error('There was a problem with the fetch operation:', error))
     }
@@ -280,8 +304,11 @@ function Chatroom() {
       .then((data)=>{
         console.log(data)
         fetchUserChats()
-        // fetchChatMessages(chatId)
-        // setSelectedFiles([])
+        fetchChatMessages(chatId)
+        setSelectedFiles([])
+        // if (fileInputRef.current) {
+        //   fileInputRef.current.file = null; // Clear file input
+        // }
       })
       .catch((error) => console.error("There was a problem with the fetch operation:", error));
     }
@@ -367,9 +394,15 @@ function Chatroom() {
                         <Scrollbars 
                             style={{position:"relative" , height: "400px"}}
                             >
-                                {selectedFiles.length > 0 && (
+                                {isUploading && (<>
+                                <div class="spinner-border text-primary" role="status">
+                              </div>
+                              <h5>Uploading Files....</h5>
+                                </>)
+                              }
+                                {selectedFiles.length > 0 && isUploaded && (
                                     <div className="mt-3">
-                                        <h5>Selected Files:</h5>
+                                        <h5>Uploaded Files:</h5>
                                         <ul>
                                             {selectedFiles.map((item,index) => {
                                                 return (
@@ -380,7 +413,9 @@ function Chatroom() {
                                     </div>
                                 )}
                         </Scrollbars>
-                        <div className="justify-content-start align-items-center" style={{color:"green"}}>   
+                        { !isUploaded &&
+
+                          <div className="justify-content-start align-items-center" style={{color:"green"}}>
                         <form onSubmit={uploadFiles}>
                             <div style={{display:"flex"}}>
                                 <MDBInput
@@ -389,17 +424,22 @@ function Chatroom() {
                                 accept=".pdf"
                                 required
                                 multiple
+                                inputRef={fileInputRef} // Attach ref to the input
                                 >
                                 </MDBInput>
                                 <button type="submit" style={{borderRadius:"5px",background : "blue" , color: "white", border:"none", width: "125px"}} onMouseOver={(e)=>e.target.style.background = "#0f0352"} onMouseOut={(e)=> e.target.style.background="blue"}>Upload</button>
                             </div>
                         </form>
                         </div>
+                      }
                 </MDBCol>
                 <MDBCol md="6" lg="5" xl="4" style={{borderLeft:"2px solid grey"}}>
+                  {
+                    isUploaded && (<div>
+
                   <Scrollbars
-                    style={{ position: "relative", height: "400px" }}
-                    className="pt-3 pe-3"
+                  style={{ position: "relative", height: "400px" }}
+                  className="pt-3 pe-3"
                   >
                     {/* DISPLAY CHAT MESSAGES */}
                     {chatMessages.length === 0 && (
@@ -454,7 +494,7 @@ function Chatroom() {
                       src="https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava6-bg.webp"
                       alt="avatar 3"
                       style={{ width: "40px", height: "100%" }}
-                    />
+                      />
                     <input
                       type="text"
                       className="form-control form-control-lg"
@@ -462,7 +502,7 @@ function Chatroom() {
                       placeholder="Type message"
                       // onChange={(e)=>setMessage(e.target.value)}
                       onKeyDown={handleEnterKey}
-                    />
+                      />
                     <a className="ms-1 text-muted" href="#!">
                       <MDBIcon fas icon="paperclip" />
                     </a>
@@ -473,10 +513,12 @@ function Chatroom() {
                       <MDBIcon fas icon="paper-plane" />
                     </a>
                   </div>
+                  </div>)
+                  }
                 </MDBCol>
               </MDBRow>
             </MDBCardBody>
-          </MDBCard>
+            </MDBCard>
         </MDBCol>
       </MDBRow>
     </MDBContainer>
